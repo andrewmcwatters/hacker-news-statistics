@@ -19,7 +19,26 @@ const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch
 (async () => {
   const lines = fs.readFileSync(csvPath, "utf-8").split("\n").filter(Boolean);
   const usernames = lines.slice(1); // skip header
-  for (const username of usernames) {
+
+  // Get all user ids currently in the database
+  const dbUserIds = await new Promise((resolve, reject) => {
+    db.all("SELECT id FROM user", (err, rows) => {
+      if (err) reject(err);
+      else resolve(rows.map(r => r.id));
+    });
+  });
+
+  // Find missing users
+  const missingUsernames = usernames.filter(u => !dbUserIds.includes(u));
+
+  let processList = missingUsernames.length > 0 ? missingUsernames : usernames;
+  if (missingUsernames.length === 0) {
+    console.log("All users present in DB, updating all records...");
+  } else {
+    console.log(`Processing ${missingUsernames.length} missing users first...`);
+  }
+
+  for (const username of processList) {
     try {
       const res = await fetch(`https://hacker-news.firebaseio.com/v0/user/${username}.json`);
       if (!res.ok) continue;
