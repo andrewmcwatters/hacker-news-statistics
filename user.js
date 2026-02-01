@@ -1,32 +1,41 @@
-const { initializeApp } = require("firebase/app");
-const { getDatabase, ref, child, get } = require("firebase/database");
+const fs = require("fs");
+const path = require("path");
 const sqlite3 = require("sqlite3").verbose();
-const db = new sqlite3.Database("hn.db");
+
+const db = new sqlite3.Database("hacker-news.db");
+const csvPath = path.join(__dirname, "bq-results-20260201-205857-1769979839843.csv");
+
+// Create user table if it doesn't exist
+const createTableSQL = `CREATE TABLE IF NOT EXISTS user (
+  id TEXT PRIMARY KEY,
+  created INTEGER,
+  karma INTEGER,
+  updated_at TEXT
+)`;
+db.run(createTableSQL);
+
+const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 
 (async () => {
-  // TODO: Replace the following with your app's Firebase project configuration
-  // See: https://firebase.google.com/docs/web/learn-more#config-object
-  const firebaseConfig = {
-    // ...
-    // The value of `databaseURL` depends on the location of the database
-    databaseURL: "https://hacker-news.firebaseio.com/",
-  };
-
-  // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
-
-  // Initialize Realtime Database and get a reference to the service
-  const database = getDatabase(app);
-
-  const dbRef = ref(getDatabase());
-  try {
-    const snapshot = await get(child(dbRef, "/v0/maxitem"));
-    if (snapshot.exists()) {
-      console.log(snapshot.val());
-    } else {
-      console.log("No data available");
+  const lines = fs.readFileSync(csvPath, "utf-8").split("\n").filter(Boolean);
+  const usernames = lines.slice(1); // skip header
+  for (const username of usernames) {
+    try {
+      const res = await fetch(`https://hacker-news.firebaseio.com/v0/user/${username}.json`);
+      if (!res.ok) continue;
+      const user = await res.json();
+      if (!user) continue;
+      const { id, created, karma } = user;
+      const updated_at = new Date().toISOString();
+      db.run(
+        `INSERT INTO user (id, created, karma, updated_at) VALUES (?, ?, ?, ?)
+         ON CONFLICT(id) DO UPDATE SET created=excluded.created, karma=excluded.karma, updated_at=excluded.updated_at`,
+        [id, created, karma, updated_at]
+      );
+      console.log(`Upserted user: ${id}`);
+    } catch (e) {
+      console.error(`Failed for user ${username}:`, e);
     }
-  } catch (error) {
-    console.error(error);
   }
+  db.close();
 })();
