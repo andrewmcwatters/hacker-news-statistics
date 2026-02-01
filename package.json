@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "firebase": "^10.12.4",
+    "firebase": "^12.8.0",
     "sqlite3": "^5.1.7"
   }
 }
