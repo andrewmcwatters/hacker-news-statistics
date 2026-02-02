@@ -120,6 +120,7 @@ func main() {
 			fmt.Printf("Failed for user %s: %v\n", username, err)
 			continue
 		}
+		// Redacted user check
 		if user == nil || user.ID == "" {
 			fmt.Printf("Skipped user with empty ID for username: %s\n", username)
 			continue
