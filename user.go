@@ -102,14 +102,12 @@ func main() {
 			missing = append(missing, u)
 		}
 	}
-	var processList []string
 	if len(missing) > 0 {
-		fmt.Printf("Processing %d missing users first...\n", len(missing))
-		processList = missing
+		fmt.Printf("%d users missing from db, will upsert all usernames.\n", len(missing))
 	} else {
 		fmt.Println("All users exist in db, updating all records...")
-		processList = usernames
 	}
+	processList := usernames
 
 	for _, username := range processList {
 		if username == "" {
