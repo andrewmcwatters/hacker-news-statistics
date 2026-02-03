@@ -52,6 +52,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	defer csvFile.Close()
 	reader := csv.NewReader(bufio.NewReader(csvFile))
 	reader.FieldsPerRecord = -1
 	rows, err := reader.ReadAll()
@@ -106,7 +107,7 @@ func main() {
 		fmt.Printf("Processing %d missing users first...\n", len(missing))
 		processList = missing
 	} else {
-		fmt.Println("All users present in DB, updating all records...")
+		fmt.Println("All users exist in db, updating all records...")
 		processList = usernames
 	}
 
@@ -122,14 +123,14 @@ func main() {
 		}
 		// Redacted user check
 		if user == nil || user.ID == "" {
-			fmt.Printf("Skipped user with empty ID for username: %s\n", username)
+			fmt.Printf("Skipped user with empty id for username: %s\n", username)
 			continue
 		}
 		_, err = db.Exec(`INSERT INTO user (id, created, karma, updated_at) VALUES (?, ?, ?, ?)
 			ON CONFLICT(id) DO UPDATE SET created=excluded.created, karma=excluded.karma, updated_at=excluded.updated_at`,
 			user.ID, user.Created, user.Karma, user.UpdatedAt)
 		if err != nil {
-			fmt.Printf("DB error for user %s: %v\n", user.ID, err)
+			fmt.Printf("db error for user %s: %v\n", user.ID, err)
 			continue
 		}
 		fmt.Printf("Upserted user: %s\n", user.ID)
